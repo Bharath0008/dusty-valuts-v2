@@ -1,0 +1,146 @@
+﻿@page
+@* <form method="post" action="/Authentication/SignIn">
+    <button type="submit">Login with LinkedIn</button>
+</form> *@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login Form</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #080710;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-container {
+            width: 400px;
+            padding: 50px 35px;
+            background: rgba(255, 255, 255, 0.13);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 40px rgba(8, 7, 16, 0.6);
+            position: relative;
+            z-index: 1;
+        }
+
+            .form-container h3 {
+                text-align: center;
+                font-size: 32px;
+                font-weight: 500;
+                color: #fff;
+                margin-bottom: 30px;
+            }
+
+        label {
+            display: block;
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            margin-top: 20px;
+        }
+
+        input {
+            display: block;
+            width: 100%;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.07);
+            border-radius: 3px;
+            padding: 0 10px;
+            margin-top: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        ::placeholder {
+            color: #e5e5e5;
+        }
+
+        .button {
+            margin-top: 30px;
+            width: 100%;
+            background-color: #fff;
+            color: #080710;
+            padding: 15px 0;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .linkedin-btn {
+            background-color: #0077b5;
+            color: white;
+        }
+
+            .linkedin-btn:hover {
+                background-color: #005983;
+            }
+        .linkedin-signin {
+            margin-top: 20px; /* space above button */
+            width: 100%;
+            background-color: #0077B5; /* LinkedIn blue */
+            color: #ffffff;
+            padding: 15px 0;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+         .google-signin {
+            margin-top: 20px; /* space above button */
+            width: 100%;
+            background-color: red; /* LinkedIn blue */
+            color: #ffffff;
+            padding: 15px 0;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .linkedin-btn:signin {
+                background-color: #005983; /* darker on hover */
+            }
+            .google-btn:signin {
+                background-color: red; /* darker on hover */
+            }
+
+
+    </style>
+</head>
+<body>
+    <div class="background">
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <div class="form-container">
+        <form method="post" action="/Authentication/SignIn">
+            <button type="submit" class="linkedin-signin">Sign In with LinkedIn</button>
+        </form>
+        <form method="post" action="/GoogleAccount/Login">
+            <button type="submit" class="google-signin">Sign In with Google</button>
+        </form>
+        
+    </div>
+</body>
+</html>
