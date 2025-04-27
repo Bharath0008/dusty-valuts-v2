@@ -8,15 +8,18 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using LinkedInAPI.Models;
+using LinkedInAPI.Helper;
 
 namespace LinkedInAPI.Controllers
 {
     public class GoogleAccountController : Controller
     {
         private readonly LoginContext _dbContext;
-        public GoogleAccountController(LoginContext dbContext)
+        private readonly MailService _mailService;
+        public GoogleAccountController(LoginContext dbContext, MailService mailService)
         {
             _dbContext = dbContext;
+            _mailService = mailService;
         }
         [HttpPost]
         public IActionResult Login()
@@ -53,10 +56,12 @@ namespace LinkedInAPI.Controllers
                         Email = email,
                         ProviderName = providerName,
                     };
+                    _mailService.SendEmailAsync(email, "Socail Login Successfully", "Thank you for signing up! Using Gmail account");
                     _dbContext.LoginData.Add(newUser);
                     await _dbContext.SaveChangesAsync();
 
                 }
+                
                 return View("~/Views/GoogleHomePage.cshtml", userData);
             }
             return Redirect("/");

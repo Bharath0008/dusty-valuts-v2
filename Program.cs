@@ -1,5 +1,6 @@
 using LinkedInAPI.DBModels;
 using LinkedInAPI.Helper;
+using LinkedInAPI.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -27,7 +28,8 @@ var accessToken = builder.Configuration["LinkedIn:AccessToken"];
 var linkedInClientId = builder.Configuration["LinkedIn:LinkedInClientId"];
 var linkedInSecretKey = builder.Configuration["LinkedIn:LinkedInSecretKey"];
 builder.Services.AddDbContext<LoginContext>(options => options.UseSqlServer(conStr));
-
+builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
+builder.Services.AddTransient<MailService>();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

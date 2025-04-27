@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using LinkedInAPI.DBModels;
+using LinkedInAPI.Helper;
 using LinkedInAPI.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -13,9 +14,11 @@ namespace LinkedInAPI.Controllers
     public class AuthenticationController : Controller
     {
         private readonly LoginContext _dbContext;
-        public AuthenticationController(LoginContext dbContext)
+        private readonly MailService _mailService;
+        public AuthenticationController(LoginContext dbContext, MailService mailService)
         {
             _dbContext = dbContext;
+            _mailService = mailService;
         }
         [HttpPost]
         public IActionResult SignIn()
@@ -62,12 +65,12 @@ namespace LinkedInAPI.Controllers
                         Email = userProfile.email,
                         ProviderName = providerName,
                     };
-
+                    _mailService.SendEmailAsync(userProfile.email, "Socail Login Successfully", "Thank you for signing up!");
                     _dbContext.LoginData.Add(newUser);
                     await _dbContext.SaveChangesAsync();
 
                 }
-                var userData = new GoogleDataModel
+                 var userData = new GoogleDataModel
                 {
                     Name = userProfile!.name,
                     Email = userProfile.email,
