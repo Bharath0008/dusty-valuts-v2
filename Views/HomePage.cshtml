@@ -76,13 +76,11 @@
     </div>
     var picture = Model.Profile;
     <h2>Welcome, @Model.Name!</h2>
-
     <p>Email: <strong>@Model.Email</strong></p>
     if (!string.IsNullOrEmpty(Model.Profile))
     {
         <img src="@Model.Profile" alt="Profile Image" />
     }
-   
 }
 else
 {
