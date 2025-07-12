@@ -24,7 +24,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --no-restore
 
   docker:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .                          # ✅ use root folder
-          file: ./Dockerfile                  # ✅ Dockerfile is at root
+          context: .                          
+          file: ./Dockerfile                  
           push: true
           tags: bharath082000/dockertest:latest
