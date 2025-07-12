@@ -45,7 +45,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./LinkedInAPI                              # ✅ path where Dockerfile and code live
-          file: ./LinkedInAPI/Dockerfile                      # ✅ full path to Dockerfile
-          push: true
-          tags: bharath082000/dockertest:latest
+        context: .                          # ✅ use root folder
+        file: ./Dockerfile                  # ✅ Dockerfile is at root
+        push: true
+        tags: bharath082000/dockertest:latest
