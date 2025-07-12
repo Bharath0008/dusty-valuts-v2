@@ -47,3 +47,5 @@ jobs:
         with:
           push: true
           tags:  bharath082000/dockertest:latest
+          context: .                            
+          file: ./Dockerfile  
