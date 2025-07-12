@@ -46,4 +46,4 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags:  bharath082000/dockertest/app:latest
+          tags:  bharath082000/dockertest:latest
