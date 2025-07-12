@@ -21,14 +21,14 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore LinkedInAPI/LinkedInAPI.csproj
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build LinkedInAPI/LinkedInAPI.csproj --no-restore --configuration Release
 
   docker:
     runs-on: ubuntu-latest
-    needs: build 
+    needs: build
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .                          
-          file: ./LinkedInAPI/Dockerfile     
+          context: ./LinkedInAPI                              # ✅ path where Dockerfile and code live
+          file: ./LinkedInAPI/Dockerfile                      # ✅ full path to Dockerfile
           push: true
           tags: bharath082000/dockertest:latest
