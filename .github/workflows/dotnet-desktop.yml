@@ -45,7 +45,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
+          context: .                          
+          file: ./LinkedInAPI/Dockerfile     
           push: true
-          tags:  bharath082000/dockertest:latest
-          context: .                            
-          file: ./Dockerfile  
+          tags: bharath082000/dockertest:latest
