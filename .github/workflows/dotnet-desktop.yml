@@ -21,10 +21,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore dependencies
-        run: dotnet restore LinkedInAPI/LinkedInAPI.csproj
+        run: dotnet restore
 
       - name: Build
-        run: dotnet build LinkedInAPI/LinkedInAPI.csproj --no-restore --configuration Release
+        run: dotnet build --no-restore --configuration Release
 
   docker:
     runs-on: ubuntu-latest
