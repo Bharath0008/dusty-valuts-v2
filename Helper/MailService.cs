@@ -22,7 +22,7 @@ namespace LinkedInAPI.Helper
 
             var mailMessage = new MailMessage
             {
-                From = new MailAddress(_mailSettings.FromEmail),
+                From = new MailAddress(_mailSettings.FromEmail!),
                 Subject = subject,
                 Body = body,
                 IsBodyHtml = false 
