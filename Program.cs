@@ -9,6 +9,10 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
+var configuration = builder.Configuration;
+var connectionString = configuration.GetConnectionString("LinkedApi") ??
+    Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING");
 
 // Add services to the container.
 
@@ -27,7 +31,7 @@ var authorization = builder.Configuration["LinkedIn:Authorization"];
 var accessToken = builder.Configuration["LinkedIn:AccessToken"];
 var linkedInClientId = builder.Configuration["LinkedIn:LinkedInClientId"];
 var linkedInSecretKey = builder.Configuration["LinkedIn:LinkedInSecretKey"];
-builder.Services.AddDbContext<LoginContext>(options => options.UseSqlServer(conStr));
+builder.Services.AddDbContext<LoginContext>(options => options.UseSqlServer(connectionString));
 builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
 builder.Services.AddTransient<MailService>();
 builder.Services.AddAuthentication(options =>
