@@ -13,7 +13,6 @@ builder.Configuration.AddEnvironmentVariables();
 var configuration = builder.Configuration;
 var connectionString = configuration.GetConnectionString("LinkedApi") ??
     Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING");
-
 // Add services to the container.
 
 builder.Services.AddControllers();
