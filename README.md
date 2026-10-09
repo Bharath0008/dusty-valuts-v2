@@ -3,7 +3,13 @@
 A plain-language web remote control for a fleet of [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 instances. One Python file, one HTML page, standard library only, no dependencies and no build step.
 
-![The machine strip and the Picture tab. Each lane reports what it found installed: MiniMax-H3 on the video lanes, Qwen-Image on the picture lane, and one box with neither](docs/screenshot-picture.png)
+![The machine strip and the Picture tab: every lane's live status, then Quality, Shape, What it makes and Which machine as four big plain-language pickers](docs/screenshot-picture.png)
+
+The page is dark by default with a light mode (the moon/sun button, remembered per browser), and it is
+built for a phone as much as a desk: on a narrow screen the machine strip becomes a swipeable row, the
+pickers stack, and every control is a full-size tap target.
+
+<p align="center"><img src="docs/screenshot-phone.png" width="300" alt="The same page on a phone: swipeable machine strip, big tab buttons, stacked pickers"></p>
 
 ## Why this exists
 
@@ -27,7 +33,7 @@ Two model families are wired in:
 | **Video** | MiniMax-H3 | text to video, first/last frame (fl2va), reference images and clips (ref2va) |
 | **Picture -> Video** | both | a finished still goes onto a video lane as its first frame, resized to fit |
 
-![The Video tab with the What each machine has expander open, showing the exact file picked for every role. Video Lane B has no speed pack, so the quick Quality settings are switched off and the reason is on screen](docs/screenshot-video.png)
+![The What each machine has expander open, showing the exact file picked for every role on every lane, including the H3 speed pack and the Qwen-Image Turbo checkpoint](docs/screenshot-video.png)
 
 ---
 
@@ -55,6 +61,14 @@ Two model families are wired in:
    | MiniMax-H3 text encoder (a Qwen3-VL 32B fine-tune) | `models/text_encoders/` |
    | MiniMax-H3 video VAE **and** audio VAE (both are needed) | `models/vae/` |
    | MiniMax-H3 4-step turbo LoRA (optional, enables the quick settings) | `models/loras/` |
+   | Qwen-Image-2.1-Turbo (optional, enables the **Turbo** picture quality) | `models/diffusion_models/` |
+
+   **Qwen-Image-2.1-Turbo** is the official 8-step distilled checkpoint
+   (<https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo>). It reuses the normal model's text encoder and
+   VAE, so it is one extra file. The repo ships the transformer as two shards; concatenate them into one
+   `.safetensors` (for example `qwen_image_2.1_turbo_bf16.safetensors`) and ComfyUI loads it as-is.
+   With it installed, the Picture tab's Quality list gains **Turbo**: about twice as fast as Standard,
+   slightly looser on small details. A picture lane without it keeps Turbo listed but switched off.
 
    You only need the family you intend to use. A lane with only H3 is a video lane, a lane with only
    Qwen-Image is a picture lane, and the app works this out for itself.
@@ -91,8 +105,8 @@ config path works. Fill in real addresses and the lanes turn green within about 
 reporting what it found:
 
 ```
-[models] Video Lane A has video: MiniMax-H3 (INT8), pictures: no, speed pack: yes
-[models] Picture Lane A has video: no, pictures: Qwen-Image 2.1 (INT8), speed pack: not installed
+[models] Video Lane A has video: MiniMax-H3 (INT8), pictures: no, speed pack: yes, picture turbo: not installed
+[models] Picture Lane A has video: no, pictures: Qwen-Image 2.1 (INT8), speed pack: not installed, picture turbo: yes
 [models] Spare Box 1 answered, but has no Qwen-Image or MiniMax-H3 models installed
 ```
 
@@ -236,7 +250,8 @@ out; "prefers" only breaks ties.
 | H3 video VAE | `minimax_h3` | `audio` | `video` |
 | H3 audio VAE | `minimax_h3`, `audio` | | |
 | H3 speed LoRA | `minimax_h3`, and one of `turbo` / `4step` / `lightx2v` | | `comfy`, `fl2v` |
-| Qwen image model | `qwen_image` | `minimax`, `vae` | `2.1` |
+| Qwen image model | `qwen_image` | `minimax`, `vae`, `turbo` | `2.1` |
+| Qwen Turbo model (optional) | `qwen_image`, `turbo` | `minimax`, `vae` | `2.1` |
 | Qwen text encoder | `qwen3vl` | `minimax` | `8b` |
 | Qwen VAE | `qwen_image`, `vae` | `minimax` | |
 
@@ -284,7 +299,7 @@ Pin a specific file whenever you want. Anything named in config wins; anything a
 }
 ```
 
-The keys are `qwen_unet`, `qwen_clip`, `qwen_vae`, `h3_unet_fl2va`, `h3_unet_ref2va`, `h3_clip_nvfp4`,
+The keys are `qwen_unet`, `qwen_clip`, `qwen_vae`, `qwen_turbo_unet`, `h3_unet_fl2va`, `h3_unet_ref2va`, `h3_clip_nvfp4`,
 `h3_clip_int8`, `h3_vae_video`, `h3_vae_audio` and `h3_turbo_lora`. A key this app does not use is
 rejected at start-up rather than ignored, so a typo cannot quietly do nothing. If your filenames are
 unusual enough that discovery misses them, either rename the files to include the terms in the table
@@ -369,12 +384,13 @@ the aspect ratios already match.
 values (124 through 362, roughly 5 to 15 seconds at 24 fps) and the server snaps anything else. 362
 frames is the trained maximum.
 
-**Step counts are hidden on purpose.** The Quality dropdown says Draft / Standard / High / Max for
+**Step counts are hidden on purpose.** The Quality dropdown says Turbo / Draft / Standard / High / Max for
 pictures and Fast / Fast+ / Fast best / Middle / Good / Best for video, with a plain-words note under
 each. The fastest option is never the default. The turbo LoRA is attached automatically on the rows at 8
 steps or fewer, where a 4-step distillation belongs, and never above that, where it fights the schedule
 and smooths detail away. On a machine with no turbo LoRA installed those rows are switched off entirely
-rather than run bare.
+rather than run bare. Picture **Turbo** swaps in the Turbo checkpoint and its own fixed 8-sigma schedule
+(euler, cfg 1) instead of the usual sampler, on both new pictures and edits.
 
 **Job history** lives in `data/jobs.json`, last 200 results, rewritten atomically.
 

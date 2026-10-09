@@ -74,7 +74,7 @@ CONFIG_FILE = os.environ.get("GENCENTER_CONFIG") or os.path.join(APP_DIR, "confi
 EXAMPLE_FILE = os.path.join(APP_DIR, "config.example.json")
 
 MODEL_KEYS = (
-    "qwen_unet", "qwen_clip", "qwen_vae",
+    "qwen_unet", "qwen_clip", "qwen_vae", "qwen_turbo_unet",
     "h3_unet_fl2va", "h3_unet_ref2va", "h3_clip_nvfp4", "h3_clip_int8",
     "h3_vae_video", "h3_vae_audio", "h3_turbo_lora",
 )
@@ -350,7 +350,7 @@ def http_post_multipart(url, fields, files, timeout=180.0):
 
 # role -> which loader's dropdown to search
 ROLE_POOL = {
-    "qwen_unet": "unet", "qwen_clip": "clip", "qwen_vae": "vae",
+    "qwen_unet": "unet", "qwen_clip": "clip", "qwen_vae": "vae", "qwen_turbo_unet": "unet",
     "h3_unet_fl2va": "unet", "h3_unet_ref2va": "unet",
     "h3_clip_nvfp4": "clip", "h3_clip_int8": "clip",
     "h3_vae_video": "vae", "h3_vae_audio": "vae",
@@ -387,7 +387,10 @@ ROLE_RULES = {
     "h3_turbo_lora": {"all": ["minimax_h3"], "any": ["turbo", "4step", "lightx2v"],
                       "prefer": ["comfy", "fl2v"]},
     # -- Qwen-Image ---------------------------------------------------------
-    "qwen_unet": {"all": ["qwen_image"], "none": ["minimax", "vae"], "prefer": ["2.1"]},
+    "qwen_unet": {"all": ["qwen_image"], "none": ["minimax", "vae", "turbo"], "prefer": ["2.1"]},
+    # Optional: Qwen-Image-2.1-Turbo, the official 8-step distilled checkpoint. It shares the
+    # normal model's text encoder and VAE, so it only adds one file. Enables the "Turbo" quality.
+    "qwen_turbo_unet": {"all": ["qwen_image", "turbo"], "none": ["minimax", "vae"], "prefer": ["2.1"]},
     "qwen_clip": {"all": ["qwen3vl"], "none": ["minimax"], "prefer": ["8b"]},
     "qwen_vae": {"all": ["qwen_image", "vae"], "none": ["minimax"]},
 }
@@ -488,7 +491,8 @@ def discover_lane(lane):
         else:
             bits = ["video: " + (describe_video(lane) if able["video"] else "no"),
                     "pictures: " + (describe_image(lane) if able["image"] else "no"),
-                    "speed pack: " + ("yes" if able["turbo"] else "not installed")]
+                    "speed pack: " + ("yes" if able["turbo"] else "not installed"),
+                    "picture turbo: " + ("yes" if able["image_turbo"] else "not installed")]
             log("%s has %s" % (lane["name"], ", ".join(bits)), "models")
 
 
@@ -512,8 +516,9 @@ def abilities(lane):
     fl2va = bool(m.get("h3_unet_fl2va") and clip and both_vaes)
     ref2v = bool(m.get("h3_unet_ref2va") and clip and both_vaes)
     image = bool(m.get("qwen_unet") and m.get("qwen_clip") and m.get("qwen_vae"))
+    image_turbo = bool(m.get("qwen_turbo_unet") and m.get("qwen_clip") and m.get("qwen_vae"))
     return {"video": fl2va or ref2v, "fl2va": fl2va, "ref2v": ref2v,
-            "image": image, "turbo": bool(m.get("h3_turbo_lora"))}
+            "image": image, "image_turbo": image_turbo, "turbo": bool(m.get("h3_turbo_lora"))}
 
 
 def _quant_words(filename):
@@ -1008,6 +1013,28 @@ def qwen_t2i_graph(p, m):
     }
 
 
+# Qwen-Image-2.1-Turbo: a fixed 8-sigma schedule (the checkpoint's own sample_sigmas plus a
+# terminal 0), euler, cfg 1. About 2x faster than the 20-pass default, slightly looser on
+# small details. https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo ships the transformer as two
+# shards; concatenate them into one .safetensors in diffusion_models/ and ComfyUI loads it as-is.
+QWEN_TURBO_SIGMAS = "1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0.0"
+QWEN_TURBO_STEPS = 8
+
+
+def turbo_swap(g, pos, latent, unet):
+    """Swap a Qwen graph's KSampler (node 8) for the Turbo checkpoint and its fixed schedule."""
+    g["1"]["inputs"]["unet_name"] = unet
+    g.pop("7", None)   # ModelSamplingAuraFlow: the turbo schedule is already shifted
+    g["11"] = {"class_type": "BasicGuider", "inputs": {"model": ["1", 0], "conditioning": pos}}
+    g["12"] = {"class_type": "ManualSigmas", "inputs": {"sigmas": QWEN_TURBO_SIGMAS}}
+    g["13"] = {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}}
+    g["14"] = {"class_type": "RandomNoise", "inputs": {"noise_seed": g["8"]["inputs"]["seed"]}}
+    g["8"] = {"class_type": "SamplerCustomAdvanced", "inputs": {
+        "noise": ["14", 0], "guider": ["11", 0], "sampler": ["13", 0], "sigmas": ["12", 0],
+        "latent_image": latent}}
+    return g
+
+
 def qwen_edit_graph(p, m):
     """Qwen-Image-2.1 edit. TextEncodeQwenImage21 is the 2.1-native encoder: it
     takes the reference images, emits positive + negative conditioning AND the
@@ -1336,6 +1363,7 @@ class Handler(BaseHTTPRequestHandler):
                     "video": describe_video(l) if able["video"] else "",
                     "image": describe_image(l) if able["image"] else "",
                     "turbo": able["turbo"],
+                    "image_turbo": able["image_turbo"],
                     "ref2v": able["ref2v"],
                 },
                 "files": models_for(l),
@@ -1461,6 +1489,11 @@ class Handler(BaseHTTPRequestHandler):
                                        % (lane["name"], join_words(missing_for(lane, "image")),
                                           suggest_lanes("image"))}, 400)
             cfg = float(p.get("cfg") or 2.5)
+            turbo = bool(p.get("turbo"))
+            if turbo and not able["image_turbo"]:
+                return self.send_json({"ok": False, "error":
+                                       "%s does not have the Turbo picture model installed. Pick another "
+                                       "quality, or add Qwen-Image-2.1-Turbo to that machine." % lane["name"]}, 400)
             w = int(p.get("width") or 1328)
             h = int(p.get("height") or 1328)
             w, h = (w // 16) * 16, (h // 16) * 16
@@ -1471,9 +1504,14 @@ class Handler(BaseHTTPRequestHandler):
                 graph = qwen_edit_graph(args, m) if mode == "edit" else qwen_t2i_graph(args, m)
             except ValueError as e:
                 return self.send_json({"ok": False, "error": str(e)}, 400)
+            if turbo:
+                steps = args["steps"] = QWEN_TURBO_STEPS
+                graph = turbo_swap(graph, ["4", 0], ["4", 2] if mode == "edit" else ["6", 0],
+                                   m["qwen_turbo_unet"])
             meta = {"prompt": prompt, "negative": p.get("negative", ""), "seed": seed, "steps": steps,
-                    "cfg": cfg, "width": w, "height": h, "model": describe_image(lane),
-                    "model_file": m.get("qwen_unet", ""),
+                    "cfg": 1.0 if turbo else cfg, "width": w, "height": h,
+                    "model": "Qwen-Image-2.1 Turbo" if turbo else describe_image(lane),
+                    "model_file": m.get("qwen_turbo_unet" if turbo else "qwen_unet", ""),
                     "refs": len(args["ref_images"])}
             return self.send_json(dispatch(lane, graph, "image", mode, meta))
 
